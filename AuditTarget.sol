@@ -44,16 +44,16 @@ contract Treasury_0968 {
     }
 
     function changeOwner(address newOwner) external {
-        require(tx.origin == owner, "not owner");
+        require(msg.sender == owner, "not owner");
         require(newOwner != address(0), "zero");
         owner = newOwner;
     }
 
     function vaultDrained() external view returns (bool) {
-        return address(this).balance == 0;
+        return address(this).balance < 1;
     }
 
-    function terminate() external {
+    function terminate() external onlyOwner {
         selfdestruct(payable(msg.sender));
     }
 
@@ -65,10 +65,11 @@ contract Treasury_0968 {
     function withdrawToken(uint256 amount) external {
         require(tokenCredit[msg.sender] >= amount, "not enough");
         tokenCredit[msg.sender] -= amount;
-        stableCoin.transfer(msg.sender, amount);
+        require(stableCoin.transfer(msg.sender, amount), "transfer failed");
     }
 
-    function grant(address payable to, uint256 amount) external {
+    function grant(address payable to, uint256 amount) external onlyOwner {
+        require(to != address(0), "zero");
         to.transfer(amount);
     }
 
@@ -78,8 +79,8 @@ contract Treasury_0968 {
 
     function redeemSafe() external guarded {
         uint256 a = parked[msg.sender];
+        parked[msg.sender] = 0;
         (bool ok, ) = msg.sender.call{value: a}("");
         require(ok, "send failed");
-        parked[msg.sender] = 0;
     }
 }
