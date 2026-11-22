@@ -3,7 +3,7 @@
 **MSSV:** 24520968  | **Họ tên:** Phạm Quang Linh | **Lớp:** NT547.R11.ANTT
 **Session code tự sinh:** SC-EE4262 | **Tên contract:** Treasury_0968
 **Solidity / Slither:** 0.8.24 / 0.11.6 | **Ngày hoàn thành:** ...
-**URL GitHub repository:** ...
+**URL GitHub repository:** https://github.com/Linhquang06/nt547-lab06
 
 ## 1. Static scan (2,0 điểm)
 ![alt text](image.png)
@@ -106,14 +106,28 @@ Dùng Solidity 0.8.24 nên phép cộng balances[account] += amount đã có ki�
 ## 5. Mutation RED -> GREEN (1,5 điểm)
 
 - Mutation một dòng: `require(msg.sender == owner, "not owner")` -> `require(tx.origin == owner, "not owner")` trong `modifier onlyOwner`.
-- Detector kỳ vọng: `tx-origin` (mức Medium); xác nhận của em từ CI: ...
+
+![alt text](image-13.png)
+![alt text](image-15.png)
+![alt text](image-14.png)
+![alt text](image-16.png)
+![alt text](image-17.png)
+![alt text](image-18.png)
+![alt text](image-19.png)
+**Detector kỳ vọng: tx-origin (mức Medium):** 
+- Sau khi đổi một dòng trong modifier onlyOwner thành require(tx.origin == owner, "not owner"), CI run #5 vẫn GREEN với 0 result(s) found; chạy local raw chỉ ra 4 finding Low/Informational cũ và chạy riêng slither AuditTarget.sol --detect tx-origin cũng ra 0 result. 
+- Do đó Slither 0.11.6 không báo tx-origin khi tx.origin nằm trong modifier (ở baseline detector này vẫn bắt được tx.origin trong hàm changeOwner).
 
 | Phase | Commit SHA | Run URL | Kết quả |
 |---|---|---|---|
-| Mutation | | | RED |
-| Revert mutation | | | GREEN |
+| Mutation | e5f799a987a2d2cf7d43f3027ac1ca3b1698e570 | https://github.com/Linhquang06/nt547-lab06/actions/runs/44927661515 | GREEN (Slither không báo tx-origin trong modifier) |
+| Revert mutation | b92ee3df85594b326b82c5f4bb4d6868444320d4 | https://github.com/Linhquang06/nt547-lab06/actions/runs/44930708070 | GREEN |
 
-- Giải thích sự thay đổi về nguồn định danh/authorization: ...
+**Giải thích sự thay đổi về nguồn định danh/authorization:** 
+- msg.sender là địa chỉ gọi trực tiếp hàm, còn tx.origin là ví gốc khởi tạo giao dịch. 
+- Với tx.origin == owner, nếu owner bị dụ gọi một contract độc hại thì contract đó gọi grant/terminate... và vẫn qua onlyOwner vì tx.origin vẫn là owner, dẫn tới mất quỹ. 
+- Dùng msg.sender == owner thì người gọi trực tiếp phải chính là owner nên contract trung gian không vượt qua được. 
+- Mutation này vì vậy là lỗi thật dù Slither không báo; sau revert, quyền được xác thực lại bằng msg.sender.
 
 ## 6. Bằng chứng, tự kiểm
 
@@ -126,4 +140,9 @@ Dùng Solidity 0.8.24 nên phép cộng balances[account] += amount đã có ki�
 - [ ] Các finding được triage, không chép lại mô tả detector thay cho suy luận
 - [ ] Tuyệt đối không có seed phrase, private key, credentials
 
-**Nhận xét cuối cùng (5–7 câu):** ...
+**Nhận xét cuối cùng (5–7 câu):** 
+- Qua bài lab, thấy Slither phát hiện tốt các lỗi có mẫu rõ như thiếu kiểm soát quyền (grant, terminate), tx.origin trong hàm, transfer không kiểm tra kết quả và reentrancy. 
+- Tuy vậy công cụ có giới hạn: nó báo reentrancy-eth ở redeemSafe dù hàm đã có mutex guarded, và không báo tx.origin khi nó nằm trong modifier onlyOwner (CI vẫn GREEN, --detect tx-origin ra 0 result), nên không thể dựa hoàn toàn vào kết quả quét. 
+- Vì vậy phải đọc mã để triage từng finding: 4 lỗi thật được sửa bằng mã, 2 đoạn ngữ cảnh được phân tích riêng, và các cảnh báo Low/Informational còn lại được ghi lý do accepted. 
+- --fail-none ở local chỉ để thu bằng chứng, còn ngưỡng fail-on: medium của CI mới là quality gate thật. Bài giúp thấy tự động hóa kiểm thử bảo mật hữu ích để chặn lỗi sớm, nhưng cần kết hợp review thủ công. 
+- Phần mutation cho thấy một thay đổi một dòng có thể tạo lỗ hổng thật mà công cụ không bắt được.
