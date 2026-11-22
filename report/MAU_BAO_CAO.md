@@ -2,7 +2,7 @@
 
 **MSSV:** 24520968  | **Họ tên:** Phạm Quang Linh | **Lớp:** NT547.R11.ANTT
 **Session code tự sinh:** SC-EE4262 | **Tên contract:** Treasury_0968
-**Solidity / Slither:** 0.8.24 / 0.11.6 | **Ngày hoàn thành:** ...
+**Solidity / Slither:** 0.8.24 / 0.11.6 | **Ngày hoàn thành:** 22/11/2026
 **URL GitHub repository:** https://github.com/Linhquang06/nt547-lab06
 
 ## 1. Static scan (2,0 điểm)
@@ -49,7 +49,9 @@ ghi “Manual review / Not reported”, KHÔNG sửa slither.json hoặc tạo f
 - **Bằng chứng git diff, scan before/after và cảnh báo còn lại:** Scan raw: 10 → 4 finding (High 4→0, Medium 2→0, Low 1→1, Info 3→3); configured: 6 → 0. Cảnh báo còn lại, đều không ảnh hưởng ngưỡng CI (Medium):
   - events-access (Low), changeOwner: accepted, hàm đã kiểm soát bằng msg.sender == owner, chỉ thiếu event nên ảnh hưởng giám sát chứ không phải bảo mật.
   - low-level-calls (Info), redeemSafe: accepted, call{value} là cách gửi ETH khuyến nghị, kết quả được kiểm tra bằng require(ok), state đã cập nhật trước call, có mutex guarded.
-  - low-level-calls (Info), ownerWithdraw: accepted, hàm chỉ dành cho owner.
+ - low-level-calls (Info), ownerWithdraw (41-44): accepted, hàm có modifier onlyOwner nên chỉ owner gọi được, tiền chỉ được gửi tới chính owner, và kết quả của call{value} được kiểm tra bằng require(ok, "withdraw failed").
+
+ ![alt text](image-20.png)
   - naming-convention (Info), Treasury_0968: accepted, hậu tố MSSV do generator sinh, chỉ là quy ước đặt tên.
   - Compiler warning selfdestruct deprecated ở terminate: accepted; từ EIP-6780 (Cancun), selfdestruct thông thường chỉ chuyển ETH chứ không xóa code/storage, và hàm nay chỉ owner gọi được.
 
